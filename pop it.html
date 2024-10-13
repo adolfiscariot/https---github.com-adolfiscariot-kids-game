@@ -5,29 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pop It</title>
     <style>
-        body {margin: 0; overflow: hidden;}
-        canvas { display: block; background-color: rgb(86, 180, 243);}
+        body {position: absolute; margin: 0; overflow: hidden; }
+        canvas{display:block; background-image: url('forest.jpg');}
         
     </style>
 </head>
 <body>
     <!--let's create the canvas element that we'll draw the game on-->
     <canvas id = 'pop-it'></canvas>
+    <audio id="backgroundAudio" src="background-audio.mp3" autoplay = 'autoplay'></audio>
 
     <script>
         /*fetch the canvas and tell it we'll be drawing a 2d game*/
         const canvas = document.getElementById('pop-it');
         const ctx = canvas.getContext('2d')
+        const backgroundAudio = document.getElementById('backgroundAudio');
 
         /*declare the canvas's dimensions*/
         const canvas_width = canvas.width = window.innerWidth;
         const canvas_height = canvas.height = window.innerHeight;
         
-
         /*declare the constants*/
         const balloon_speed = 2; 
-        const x_radius = 50;
-        const y_radius = 70 
+        const x_radius = 70;
+        const y_radius = 100 
         let balloons = []; //an array for holding balloons
         const new_balloon_interval = 1000; //2 second balloon creation interval
         let timer = 0; //if player doesnt get right answer in 10 secs they lose
@@ -53,12 +54,22 @@
             ctx.textBaseline = 'middle';
             ctx.fillText(text, x + width / 2, y + height / 2);
         }
+
+        /*create background image*/
+        const backgroundImage = new Image();
+        backgroundImage.src = '';
+
+        /*create audio*/
+        const balloonBurstAudio = new Audio('balloon-pop.mp3'); //balloon bursting audio
+        backgroundAudio.play();
+        
+        /*function to pick a random balloon color*/
         function newColor(){
             const colors = [300, 240, 120, 60, 30, 270]; //pink, blue, green, yellow, orange, purple in hsl
             const randomIndex = Math.floor(Math.random() * colors.length)
             const randomColor = colors[randomIndex];
             return randomColor;}
-        
+
         /*create the balloon class*/
         class Balloon {
             /*what variables do i want every new balloon object to have*/
@@ -72,7 +83,8 @@
                 this.hasBurst = false; //balloon's burst status
                 this.burstTimer = 0; //counter for once the balloon has burst
                 this.isRemoved = false; //check if balloon is removed from canvas
-                this.color = newColor();
+                this.color = newColor(); //balloon's color
+                this.isCorrect;
             }
 
             /*lets draw the balloon*/
@@ -98,10 +110,10 @@
                 ctx.fill(); //fill out the space with the drawing
 
                 /*draw the balloon string*/
-                ctx.strokeStyle = 'black';
+                ctx.strokeStyle = 'white';
                 ctx.beginPath() 
                 ctx.moveTo(this.x, this.y + this.radius_y); //string's starting point.
-                ctx.lineTo(this.x, (this.y + this.radius_y) + 70); //string's ending point
+                ctx.bezierCurveTo(this.x - 20, this.y + this.radius_y + 20, this.x + 20, this.y + this.radius_y + 40, this.x, (this.y + this.radius_y) + 70)
                 ctx.stroke();
 
                 /*write the random number on the balloon*/
@@ -110,6 +122,7 @@
                 ctx.textBaseline = 'middle';
                 ctx.font = 'bold 70px Times New Roman';
                 ctx.fillText(this.number, this.x, this.y);
+
             }
 
             update(){
@@ -133,13 +146,20 @@
 
         };
 
-        /*new  balloon color*/
-        
+        function printCorrect(isCorrect){
+            if(isCorrect === true){
+                ctx.fillStyle = 'black';
+                ctx.font = '40px bold Arial';
+                ctx.fillText('CORRECT!', balloon.x, balloon.y, balloon.x_radius, balloon.y_radius)
+            } else if (isCorrect == false){
+                window.alert('no')
+            }
+        }
 
         /*timer function*/
         function increaseTimer(){
             timer++;
-            if (timer >= 10){
+            if (timer > 10){
                 alert('Game Over')
                 resetGame()
             }
@@ -156,6 +176,9 @@
         /*draw the instructions, the score, the timer and the eggs*/
         function draw(){
             ctx.clearRect(0, 0, canvas_width, canvas_height)
+
+            /*the background image*/
+            ctx.drawImage(backgroundImage, 0, 0, canvas_width, canvas_height);
 
             /*the instructions*/
             drawTextBox(`Find The Number: ${randomNumber}`, canvas_width - 900, 20, 400, 60, 40, 'black', 'white', 2, 'red');
@@ -198,14 +221,18 @@
             const mouse_click_y = event.clientY; //the click's y co-ordinate
 
             balloons.forEach(balloon => {
-                if(balloon.isInside(mouse_click_x, mouse_click_y)){ //if the co-ordinates are inside the ballon burst it
+                /*if the co-ordinates are inside the ballon burst it*/
+                if(balloon.isInside(mouse_click_x, mouse_click_y)){
+                    balloonBurstAudio.play();
+                    balloon.hasBurst = true; 
+                    
                     if(balloon.number === randomNumber){
-                        balloon.hasBurst = true;
+                        
                         score++;
                         randomNumber = generateRandomNumber();
                         timer = 0;
                     } else {
-                        balloon.hasBurst = true;   
+                        
                     }
             }
             })
