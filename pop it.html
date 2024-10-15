@@ -6,7 +6,7 @@
     <title>Pop It</title>
     <style>
         body {position: absolute; margin: 0; overflow: hidden; }
-        canvas{position:absolute; display:block; background-image: url('forest.jpg');}
+        canvas{position:absolute; display:block; background-image: url(''); background-color: aqua;}
         
     </style>
 </head>
@@ -58,13 +58,31 @@
             ctx.fillText(text, x + width / 2, y + height / 2);
         }
 
+        /*array to hold balloon numbers for each round*/
+        let balloonNumbers = [];  
+
+        /*generate new array of 1-5 in random order*/
+        function generateShuffledNumbers() {
+            let numbers = [1, 2, 3, 4, 5];
+            numbers.sort(() => Math.random() - 0.5); 
+            return numbers;
+        }
+
+        /*put the randomized numbers in the array*/
+        balloonNumbers = generateShuffledNumbers();
+
+        /*if array is empty add new round otherwise draw the last balloon in the array*/
+        function getNextNumber() {
+            if (balloonNumbers.length === 0) {
+                balloonNumbers = generateShuffledNumbers(); 
+            }
+            return balloonNumbers.pop(); 
+        }
+
         /*create background image*/
         const backgroundImage = new Image();
         backgroundImage.src = '';
 
-        /*create audio*/
-        const balloonBurstAudio = new Audio('balloon-pop.mp3'); //balloon bursting audio
-        
         /*function to pick a random balloon color*/
         function newColor(){
             const colors = [300, 240, 120, 60, 30, 270]; //pink, blue, green, yellow, orange, purple in hsl
@@ -80,7 +98,7 @@
                 this.y = canvas_height;
                 this.radius_x = x_radius;
                 this.radius_y = y_radius;
-                this.number = Math.floor(Math.random() * 5) + 1;
+                this.number = getNextNumber();
                 this.speed = balloon_speed;
                 this.hasBurst = false; //balloon's burst status
                 this.burstTimer = 0; //counter for once the balloon has burst
@@ -157,7 +175,7 @@
 
         /*variables for drawing the play button*/
         const centerX = canvas_width/2 + 150;
-        const centerY = canvas_height/2 + 40;
+        const centerY = canvas_height/2 + 130;
         const playButtonRadius = 30;
         const circleColor = 'red';
         const triangleColor = 'white';
@@ -289,28 +307,45 @@
             } 
         });
 
+        function drawCorrectOrWrongText(balloon){
+            const text = balloon.isCorrect === true? 'CORRECT!' : 'WRONG!';
+            const backgroundColor = balloon.isCorrect === true? 'green' : 'red';
+
+            drawTextBox(text, balloon.x - 100, balloon.y - 30, balloon.radius_x * 3, balloon.radius_y / 2, 30, 'white', backgroundColor, 2,'black')
+        }
+
         /*create click event handler for balloons*/
         canvas.addEventListener('click', (event) => {
             if(!gameRunning){
                 return;
             }
-            const mouse_click_x = event.clientX; //the click's x co-ordinate
-            const mouse_click_y = event.clientY; //the click's y co-ordinate
+            const mouse_click_x = event.offsetX; //the click's x co-ordinate
+            const mouse_click_y = event.offsetY; //the click's y co-ordinate
 
             balloons.forEach(balloon => {
                 /*if the co-ordinates are inside the ballon burst it*/
                 if(balloon.isInside(mouse_click_x, mouse_click_y)){
+                    const balloonBurstAudio = new Audio('balloon-pop.mp3'); //balloon bursting audio
                     balloonBurstAudio.play();
                     balloon.hasBurst = true; 
                     
                     if(balloon.number === randomNumber){
-                        alert('yes')
+                        balloon.isCorrect = true;
+                        const correctAnswerAudio = new Audio('correct-answer.mp3') //the sound when you pop the correct balloon
+                        correctAnswerAudio.play()
                         score++;
                         randomNumber = generateRandomNumber();
                         
                     } else {
-                        alert('no')
+                        balloon.isCorrect = false;
+                        const wrongAnswerAudio = new Audio('wrong-answer.mp3'); // sound when you pop the wrong balloon
+                        wrongAnswerAudio.play();
+
+                        const wrongBuzzerAudio = new Audio('wrong-buzzer.mp3'); // sound when you pop the wrong balloon
+                        wrongBuzzerAudio.play();
                     }
+
+                    drawCorrectOrWrongText(balloon);
             }
             })
     
@@ -323,9 +358,10 @@
             }
             update();
             draw();
-            if (timer > 5){
+            if (timer >= 30){
                 drawTextBox('GAME OVER', canvas_width/2 - 250, canvas_height/2 - 110, 500, 100, 70, 'white', 'orange', 5, 'black');
-                drawTextBox('Play Again', canvas_width/2 - 200, canvas_height/2, 400, 80, 40, 'white', 'orange', 2, 'black');
+                drawTextBox(`Your score is ${score}`, canvas_width/2 - 200, canvas_height/2, 400, 80, 40, 'white', 'orange', 2, 'black');
+                drawTextBox('Play Again', canvas_width/2 - 200, canvas_height/2 + 90, 400, 80, 40, 'white', 'orange', 2, 'black');
                 drawPlayButton()
                 stopGame()
             } else {
