@@ -34,8 +34,8 @@
         let timer = 0; //if player doesnt get right answer in 10 secs they lose
         let score = 0; //player's score
         let gameRunning = true;
-        const correct = 'CORRECT!' //for when a player pops the right balloon
-        const wrong = 'WRONG!' //for when a player pops the wrong balloon
+        let message; //message to tell player if they were right or wrong
+        let messageTimer = 0; //how long message stays on screen
         let randomNumber = generateRandomNumber()//generate random number for player to find
         function generateRandomNumber(){
             return Math.floor(Math.random() * 5) + 1;
@@ -83,6 +83,38 @@
         const backgroundImage = new Image();
         backgroundImage.src = '';
 
+        /*create cartoons*/
+        const dora = new Image();
+        dora.src = 'dora.png'
+        const monster = new Image();
+        monster.src = 'monster.png'
+        const patrick = new Image();
+        patrick.src = 'patrick.png'
+        const crazy = new Image();
+        crazy.src = 'crazy.png'
+        const snail = new Image();
+        snail.src = 'snail.png'
+        const ogre = new Image();
+        ogre.src = 'ogre.png'
+
+        /*function to pick random cartoon*/
+        function newCartoon(balloon){
+            const cartoons = [dora, monster, patrick, crazy, snail, ogre];
+            if (balloon.number === 1){
+                return monster;
+            } else if (balloon.number === 2) {
+                return crazy;
+            } else if (balloon.number === 3) {
+                return snail;
+            } else if (balloon.number === 4) {
+                return patrick;
+            } else if (balloon.number === 5) {
+                return ogre;
+            } else {
+                return dora
+            }
+        } 
+
         /*function to pick a random balloon color*/
         function newColor(){
             const colors = [300, 240, 120, 60, 30, 270]; //pink, blue, green, yellow, orange, purple in hsl
@@ -105,6 +137,7 @@
                 this.isRemoved = false; //check if balloon is removed from canvas
                 this.color = newColor(); //balloon's color  
                 this.isCorrect = true; //whether its the right balloon to pop
+                this.cartoon = newCartoon(this);
             }
 
             /*lets draw the balloon*/
@@ -135,6 +168,23 @@
                 ctx.moveTo(this.x, this.y + this.radius_y); //string's starting point.
                 ctx.bezierCurveTo(this.x - 20, this.y + this.radius_y + 20, this.x + 20, this.y + this.radius_y + 40, this.x, (this.y + this.radius_y) + 70)
                 ctx.stroke();
+                
+                if (this.cartoon.complete) {
+                    const imgX = this.x - 60;
+                    const imgY = this.y - 80;
+                    const imgWidth = this.radius_x + 60;
+                    const imgHeight = this.radius_y + 60;
+                    ctx.drawImage(this.cartoon, imgX, imgY, imgWidth, imgHeight);
+                } else {
+                    // Ensure the cartoon image is drawn once it loads
+                    this.cartoon.onload = () => {
+                        const imgX = this.x - this.radius_x / 2;
+                        const imgY = this.y - this.radius_y / 2;
+                        const imgWidth = this.radius_x;
+                        const imgHeight = this.radius_y;
+                        ctx.drawImage(this.cartoon, imgX, imgY, imgWidth, imgHeight);
+                    };
+        }
 
                 /*write the random number on the balloon*/
                 ctx.fillStyle = 'white';
@@ -142,7 +192,6 @@
                 ctx.textBaseline = 'middle';
                 ctx.font = 'bold 70px Times New Roman';
                 ctx.fillText(this.number, this.x, this.y);
-
             }
 
             update(){
@@ -251,6 +300,11 @@
 
             /*the balloons*/
             balloons.forEach(balloon => balloon.draw());
+
+            if (messageTimer > 0){
+                drawTextBox(message, balloon.x, balloon.y, balloon.x_radius, balloon.y_radius, 40, 'white', 'green', 2, 'black');
+                messageTimer --; 
+            }
         }
 
         /*update the screen*/
@@ -307,13 +361,6 @@
             } 
         });
 
-        function drawCorrectOrWrongText(balloon){
-            const text = balloon.isCorrect === true? 'CORRECT!' : 'WRONG!';
-            const backgroundColor = balloon.isCorrect === true? 'green' : 'red';
-
-            drawTextBox(text, balloon.x - 100, balloon.y - 30, balloon.radius_x * 3, balloon.radius_y / 2, 30, 'white', backgroundColor, 2,'black')
-        }
-
         /*create click event handler for balloons*/
         canvas.addEventListener('click', (event) => {
             if(!gameRunning){
@@ -326,10 +373,12 @@
                 /*if the co-ordinates are inside the ballon burst it*/
                 if(balloon.isInside(mouse_click_x, mouse_click_y)){
                     const balloonBurstAudio = new Audio('balloon-pop.mp3'); //balloon bursting audio
+                    balloonBurstAudio.volume = 0.5;
                     balloonBurstAudio.play();
                     balloon.hasBurst = true; 
                     
                     if(balloon.number === randomNumber){
+                        message = 'CORRECT!'
                         balloon.isCorrect = true;
                         const correctAnswerAudio = new Audio('correct-answer.mp3') //the sound when you pop the correct balloon
                         correctAnswerAudio.play()
@@ -337,15 +386,16 @@
                         randomNumber = generateRandomNumber();
                         
                     } else {
+                        message = 'WRONG!'
                         balloon.isCorrect = false;
                         const wrongAnswerAudio = new Audio('wrong-answer.mp3'); // sound when you pop the wrong balloon
                         wrongAnswerAudio.play();
-
                         const wrongBuzzerAudio = new Audio('wrong-buzzer.mp3'); // sound when you pop the wrong balloon
+                        wrongBuzzerAudio.volume = 0.5;
                         wrongBuzzerAudio.play();
                     }
 
-                    drawCorrectOrWrongText(balloon);
+                    messageTimer = 0;
             }
             })
     
