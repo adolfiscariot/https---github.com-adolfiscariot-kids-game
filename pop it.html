@@ -1,426 +1,612 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pop It</title>
     <style>
-        body {position: absolute; margin: 0; overflow: hidden; }
-        canvas{position:absolute; display:block; background-image: url(''); background-color: aqua;}
-        
+      body {
+        position: absolute;
+        margin: 0;
+        overflow: hidden;
+      }
+      canvas {
+        position: absolute;
+        display: block;
+        background-image: url("");
+        background-color: aqua;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <!--let's create the canvas element that we'll draw the game on-->
-    <canvas id = 'pop-it'></canvas>
-    <audio id="backgroundAudio" src="background-audio.mp3" autoplay = 'autoplay'></audio>
+    <canvas id="pop-it"></canvas>
+    <audio
+      id="backgroundAudio"
+      src="background-audio.mp3"
+      autoplay="autoplay"
+    ></audio>
 
     <script>
-        /*fetch the canvas and tell it we'll be drawing a 2d game*/
-        const canvas = document.getElementById('pop-it');
-        const ctx = canvas.getContext('2d')
-        const backgroundAudio = document.getElementById('backgroundAudio');
+      /*fetch the canvas and tell it we'll be drawing a 2d game*/
+      const canvas = document.getElementById("pop-it");
+      const ctx = canvas.getContext("2d");
+      const backgroundAudio = document.getElementById("backgroundAudio");
 
-        /*declare the canvas's dimensions*/
-        const canvas_width = canvas.width = window.innerWidth;
-        const canvas_height = canvas.height = window.innerHeight;
-        
-        /*declare the constants*/
-        const balloon_speed = 2; 
-        const x_radius = 70;
-        const y_radius = 100 
-        let balloons = []; //an array for holding balloons
-        const new_balloon_interval = 1000; //2 second balloon creation interval
-        let timer = 0; //if player doesnt get right answer in 10 secs they lose
-        let score = 0; //player's score
-        let gameRunning = true;
-        let message; //message to tell player if they were right or wrong
-        let messageTimer = 0; //how long message stays on screen
-        let randomNumber = generateRandomNumber()//generate random number for player to find
-        function generateRandomNumber(){
-            return Math.floor(Math.random() * 5) + 1;
+      /*declare the canvas's dimensions*/
+      const canvas_width = (canvas.width = window.innerWidth);
+      const canvas_height = (canvas.height = window.innerHeight);
+
+      /*declare the constants*/
+      const balloon_speed = 2;
+      const x_radius = 70;
+      const y_radius = 100;
+      let balloons = []; //an array for holding balloons
+      const new_balloon_interval = 1000; //2 second balloon creation interval
+      let timer = 0; //if player doesnt get right answer in 10 secs they lose
+      let score = 0; //player's score
+      let gameRunning = false;
+      let randomNumber = generateRandomNumber(); //generate random number for player to find
+      function generateRandomNumber() {
+        return Math.floor(Math.random() * 5) + 1;
+      }
+      function drawTextBox(
+        text,
+        x,
+        y,
+        width,
+        height,
+        fontSize,
+        fontColor,
+        backgroundColor,
+        borderWidth,
+        borderColor
+      ) {
+        /*Draw border*/
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth;
+        ctx.strokeRect(x, y, width, height);
+
+        /*draw text box*/
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(x, y, width, height);
+
+        /*write text*/
+        ctx.fillStyle = fontColor;
+        ctx.font = `${fontSize}px serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, x + width / 2, y + height / 2);
+      }
+
+      /*array to hold balloon numbers for each round*/
+      let balloonNumbers = [];
+
+      /*generate new array of 1-5 in random order*/
+      function generateShuffledNumbers() {
+        let numbers = [1, 2, 3, 4, 5];
+        numbers.sort(() => Math.random() - 0.5);
+        return numbers;
+      }
+
+      /*put the randomized numbers in the array*/
+      balloonNumbers = generateShuffledNumbers();
+
+      /*if array is empty add new round otherwise draw the last balloon in the array*/
+      function getNextNumber() {
+        if (balloonNumbers.length === 0) {
+          balloonNumbers = generateShuffledNumbers();
         }
-        function drawTextBox(text, x, y, width, height, fontSize, fontColor, backgroundColor, borderWidth, borderColor){
-            /*Draw border*/ 
-            ctx.strokeStyle = borderColor;
-            ctx.lineWidth = borderWidth;
-            ctx.strokeRect(x, y, width, height)
-            
-            /*draw text box*/
-            ctx.fillStyle = backgroundColor;
-            ctx.fillRect(x, y, width, height);
+        return balloonNumbers.pop();
+      }
 
-            /*write text*/
-            ctx.fillStyle = fontColor;
-            ctx.font = `${fontSize}px serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, x + width / 2, y + height / 2);
+      /*create background image*/
+      const backgroundImage = new Image();
+      backgroundImage.src = "";
+
+      /*create cartoons*/
+      const dora = new Image();
+      dora.src = "dora.png";
+      const monster = new Image();
+      monster.src = "monster.png";
+      const patrick = new Image();
+      patrick.src = "patrick.png";
+      const crazy = new Image();
+      crazy.src = "crazy.png";
+      const snail = new Image();
+      snail.src = "snail.png";
+      const ogre = new Image();
+      ogre.src = "ogre.png";
+
+      /*function to pick random cartoon*/
+      function newCartoon(balloon) {
+        const cartoons = [dora, monster, patrick, crazy, snail, ogre];
+        if (balloon.number === 1) {
+          return monster;
+        } else if (balloon.number === 2) {
+          return crazy;
+        } else if (balloon.number === 3) {
+          return snail;
+        } else if (balloon.number === 4) {
+          return patrick;
+        } else if (balloon.number === 5) {
+          return ogre;
+        } else {
+          return dora;
+        }
+      }
+
+      /*function to pick a random balloon color*/
+      function newColor() {
+        const colors = [300, 240, 120, 60, 30, 270]; //pink, blue, green, yellow, orange, purple in hsl
+        const randomIndex = Math.floor(Math.random() * colors.length);
+        const randomColor = colors[randomIndex];
+        return randomColor;
+      }
+
+      /*function to generate 'correct' or 'wrong' text once balloon is popped*/
+      function generateText(balloon) {
+        let text = balloon.isCorrect ? "CORRECT!" : "WRONG!";
+        let backgroundColor = balloon.isCorrect ? "green" : "red";
+
+        drawTextBox(
+          text,
+          balloon.x - x_radius,
+          balloon.y - y_radius / 2,
+          200,
+          50,
+          30,
+          "white",
+          backgroundColor,
+          2,
+          "black"
+        );
+      }
+
+      /*create the balloon class*/
+      class Balloon {
+        /*what variables do i want every new balloon object to have*/
+        constructor() {
+          this.x = Math.random() * canvas_width;
+          this.y = canvas_height;
+          this.radius_x = x_radius;
+          this.radius_y = y_radius;
+          this.number = getNextNumber();
+          this.speed = balloon_speed;
+          this.hasBurst = false; //balloon's burst status
+          this.burstTimer = 0; //counter for once the balloon has burst
+          this.isRemoved = false; //check if balloon is removed from canvas
+          this.color = newColor(); //balloon's color
+          this.isCorrect = true; //whether its the right balloon to pop
+          this.cartoon = newCartoon(this);
         }
 
-        /*array to hold balloon numbers for each round*/
-        let balloonNumbers = [];  
-
-        /*generate new array of 1-5 in random order*/
-        function generateShuffledNumbers() {
-            let numbers = [1, 2, 3, 4, 5];
-            numbers.sort(() => Math.random() - 0.5); 
-            return numbers;
-        }
-
-        /*put the randomized numbers in the array*/
-        balloonNumbers = generateShuffledNumbers();
-
-        /*if array is empty add new round otherwise draw the last balloon in the array*/
-        function getNextNumber() {
-            if (balloonNumbers.length === 0) {
-                balloonNumbers = generateShuffledNumbers(); 
+        /*lets draw the balloon*/
+        draw() {
+          /*if balloon has been burst don't re-draw it*/
+          if (this.hasBurst) {
+            generateText(this);
+            if (this.burstTimer < 60) {
+              this.y -= 2;
             }
-            return balloonNumbers.pop(); 
+            return;
+          }
+
+          /*declare the starting points and radius of both circles*/
+          let gradient = ctx.createRadialGradient(
+            this.x,
+            this.y,
+            this.radius_x,
+            this.x,
+            this.y,
+            this.radius_y
+          );
+
+          /*add colors*/
+          gradient.addColorStop(0, `hsl(${this.color}, 60%, 50%)`);
+          gradient.addColorStop(0.7, `hsl(${this.color}, 60%, 70%)`);
+          gradient.addColorStop(1, `hsl(${this.color}, 60%, 30%)`);
+
+          /*draw the balloon*/
+          ctx.fillStyle = gradient; //declare which gradient we'll use inside this balloon
+          ctx.beginPath(); //start drawing
+          ctx.ellipse(
+            this.x,
+            this.y,
+            this.radius_x,
+            this.radius_y,
+            0,
+            0,
+            Math.PI * 2.1
+          ); //balloon measurements
+          ctx.fill(); //fill out the space with the drawing
+
+          /*draw the balloon string*/
+          ctx.strokeStyle = "white";
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y + this.radius_y); //string's starting point.
+          ctx.bezierCurveTo(
+            this.x - 20,
+            this.y + this.radius_y + 20,
+            this.x + 20,
+            this.y + this.radius_y + 40,
+            this.x,
+            this.y + this.radius_y + 70
+          );
+          ctx.stroke();
+
+          if (this.cartoon.complete) {
+            const imgX = this.x - 60;
+            const imgY = this.y - 80;
+            const imgWidth = this.radius_x + 60;
+            const imgHeight = this.radius_y + 60;
+            ctx.drawImage(this.cartoon, imgX, imgY, imgWidth, imgHeight);
+          } else {
+            // Ensure the cartoon image is drawn once it loads
+            this.cartoon.onload = () => {
+              const imgX = this.x - this.radius_x / 2;
+              const imgY = this.y - this.radius_y / 2;
+              const imgWidth = this.radius_x;
+              const imgHeight = this.radius_y;
+              ctx.drawImage(this.cartoon, imgX, imgY, imgWidth, imgHeight);
+            };
+          }
+
+          /*write the random number on the balloon*/
+          ctx.fillStyle = "white";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = "bold 70px Times New Roman";
+          ctx.fillText(this.number, this.x, this.y);
         }
 
-        /*create background image*/
-        const backgroundImage = new Image();
-        backgroundImage.src = '';
-
-        /*create cartoons*/
-        const dora = new Image();
-        dora.src = 'dora.png'
-        const monster = new Image();
-        monster.src = 'monster.png'
-        const patrick = new Image();
-        patrick.src = 'patrick.png'
-        const crazy = new Image();
-        crazy.src = 'crazy.png'
-        const snail = new Image();
-        snail.src = 'snail.png'
-        const ogre = new Image();
-        ogre.src = 'ogre.png'
-
-        /*function to pick random cartoon*/
-        function newCartoon(balloon){
-            const cartoons = [dora, monster, patrick, crazy, snail, ogre];
-            if (balloon.number === 1){
-                return monster;
-            } else if (balloon.number === 2) {
-                return crazy;
-            } else if (balloon.number === 3) {
-                return snail;
-            } else if (balloon.number === 4) {
-                return patrick;
-            } else if (balloon.number === 5) {
-                return ogre;
-            } else {
-                return dora
+        update() {
+          /*if balloon has burst wait 30 frames (half a second) before removing it from the screen*/
+          if (this.hasBurst) {
+            this.burstTimer++;
+            if (this.burstTimer > 30) {
+              this.isRemoved = true;
             }
-        } 
-
-        /*function to pick a random balloon color*/
-        function newColor(){
-            const colors = [300, 240, 120, 60, 30, 270]; //pink, blue, green, yellow, orange, purple in hsl
-            const randomIndex = Math.floor(Math.random() * colors.length)
-            const randomColor = colors[randomIndex];
-            return randomColor;}
-
-        /*create the balloon class*/
-        class Balloon {
-            /*what variables do i want every new balloon object to have*/
-            constructor(){
-                this.x = Math.random() * canvas_width;
-                this.y = canvas_height;
-                this.radius_x = x_radius;
-                this.radius_y = y_radius;
-                this.number = getNextNumber();
-                this.speed = balloon_speed;
-                this.hasBurst = false; //balloon's burst status
-                this.burstTimer = 0; //counter for once the balloon has burst
-                this.isRemoved = false; //check if balloon is removed from canvas
-                this.color = newColor(); //balloon's color  
-                this.isCorrect = true; //whether its the right balloon to pop
-                this.cartoon = newCartoon(this);
-            }
-
-            /*lets draw the balloon*/
-            draw(){
-
-                /*if balloon has been burst don't re-draw it*/
-                if(this.hasBurst || this.isRemoved){
-                    return;
-                }
-
-                /*declare the starting points and radius of both circles*/
-                let gradient = ctx.createRadialGradient(this.x, this.y, this.radius_x, this.x, this.y ,this.radius_y);
-
-                /*add colors*/
-                gradient.addColorStop(0, `hsl(${this.color}, 60%, 50%)`);
-                gradient.addColorStop(0.7, `hsl(${this.color}, 60%, 70%)`);
-                gradient.addColorStop(1, `hsl(${this.color}, 60%, 30%)`);
-
-                /*draw the balloon*/
-                ctx.fillStyle = gradient; //declare which gradient we'll use inside this balloon
-                ctx.beginPath(); //start drawing
-                ctx.ellipse(this.x, this.y, this.radius_x, this.radius_y, 0, 0, Math.PI * 2.1); //balloon measurements
-                ctx.fill(); //fill out the space with the drawing
-
-                /*draw the balloon string*/
-                ctx.strokeStyle = 'white';
-                ctx.beginPath() 
-                ctx.moveTo(this.x, this.y + this.radius_y); //string's starting point.
-                ctx.bezierCurveTo(this.x - 20, this.y + this.radius_y + 20, this.x + 20, this.y + this.radius_y + 40, this.x, (this.y + this.radius_y) + 70)
-                ctx.stroke();
-                
-                if (this.cartoon.complete) {
-                    const imgX = this.x - 60;
-                    const imgY = this.y - 80;
-                    const imgWidth = this.radius_x + 60;
-                    const imgHeight = this.radius_y + 60;
-                    ctx.drawImage(this.cartoon, imgX, imgY, imgWidth, imgHeight);
-                } else {
-                    // Ensure the cartoon image is drawn once it loads
-                    this.cartoon.onload = () => {
-                        const imgX = this.x - this.radius_x / 2;
-                        const imgY = this.y - this.radius_y / 2;
-                        const imgWidth = this.radius_x;
-                        const imgHeight = this.radius_y;
-                        ctx.drawImage(this.cartoon, imgX, imgY, imgWidth, imgHeight);
-                    };
+            return;
+          }
+          this.y -= balloon_speed; //update the balloon's position on the y-axis if balloon hasn't burst
         }
 
-                /*write the random number on the balloon*/
-                ctx.fillStyle = 'white';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.font = 'bold 70px Times New Roman';
-                ctx.fillText(this.number, this.x, this.y);
-            }
-
-            update(){
-                /*if balloon has burst wait 30 frames (half a second) before removing it from the screen*/
-                if (this.hasBurst) {
-                    this.burstTimer ++;
-                    if (this.burstTimer > 30){
-                        this.isRemoved = true
-                    }
-                    return;
-                }
-               this.y -= balloon_speed; //update the balloon's position on the y-axis if balloon hasn't burst
-            }
-
-            /*let's check if the click is inside the balloon*/
-            isInside(x, y) {
-                const dx = x - this.x; //check the difference between the click's and ellipse's x co-ordinates
-                const dy = y - this.y; //check the difference between the click's and ellipse's y co-ordinates
-                return (dx ** 2) / (this.radius_x ** 2) + (dy ** 2) / (this.radius_y ** 2) <= 1; //formula for checking if x,y are inside the ellipse
-            }
-
-        };
-
-        /*timer function*/
-        function increaseTimer(balloons){
-            if(gameRunning){
-                timer++;
-            }
-        } 
-
-        /*variables for drawing the play button*/
-        const centerX = canvas_width/2 + 150;
-        const centerY = canvas_height/2 + 130;
-        const playButtonRadius = 30;
-        const circleColor = 'red';
-        const triangleColor = 'white';
-
-        /*draw triangle inside a circle*/
-        function drawPlayButton(){
-            drawCircle(centerX, centerY, playButtonRadius, circleColor)
-            drawTriangle(centerX + playButtonRadius, centerY, centerX - 15, centerY + 25, centerX - 15, centerY - 25, centerX + playButtonRadius, centerY, triangleColor) 
+        /*let's check if the click is inside the balloon*/
+        isInside(x, y) {
+          const dx = x - this.x; //check the difference between the click's and ellipse's x co-ordinates
+          const dy = y - this.y; //check the difference between the click's and ellipse's y co-ordinates
+          return (
+            dx ** 2 / this.radius_x ** 2 + dy ** 2 / this.radius_y ** 2 <= 1
+          ); //formula for checking if x,y are inside the ellipse
         }
+      }
 
-        /*draw a circle for the play button*/
-        function drawCircle(x, y, radius, color) {
-            ctx.beginPath();  // Start drawing
-            ctx.arc(x, y, radius, 0, Math.PI * 2);  // Draw the circle
-            ctx.fillStyle = color;  // Set the fill color
-            ctx.fill();  // Fill the circle
-            ctx.closePath();  // End the path
+      /*timer function*/
+      function increaseTimer(balloons) {
+        if (gameRunning) {
+          timer++;
         }
+      }
 
-        /*draw the triangle*/
-        function drawTriangle(move_to_x, move_to_y, x1, y1, x2, y2, x3, y3, color){
-            ctx.beginPath()
-            ctx.fillStyle = color;
-            ctx.moveTo(move_to_x, move_to_y);
-            ctx.lineTo(x1, y1);
-            ctx.lineTo(x2, y2) ;
-            ctx.lineTo(x3, y3);
-            ctx.fill()
-        }
+      /*variables for drawing the play button*/
+      const centerX = canvas_width / 2 + 150;
+      const centerY = canvas_height / 2 + 130;
+      const playButtonRadius = 30;
+      const circleColor = "red";
+      const triangleColor = "white";
 
-        /*stop game function*/
-        function stopGame(){
-            gameRunning = false;
-            clearInterval(balloonInterval);
-            clearInterval(timerInterval);
-        }
+      /*draw triangle inside a circle*/
+      function drawPlayButton() {
+        drawCircle(centerX - 20, centerY, playButtonRadius, circleColor);
+        drawTriangle(
+          centerX + playButtonRadius - 20,
+          centerY,
+          centerX - 35,
+          centerY + 25,
+          centerX - 35,
+          centerY - 25,
+          centerX + playButtonRadius - 20,
+          centerY,
+          triangleColor
+        );
+      }
 
-        /*reset game*/
-        function resetGame(){
-            balloons = [];
-            timer = 0;
-            score = 0;
-            randomNumber = generateRandomNumber()
-            gameRunning = true;
+      /*draw a circle for the play button*/
+      function drawCircle(x, y, radius, color) {
+        ctx.beginPath(); // Start drawing
+        ctx.arc(x, y, radius, 0, Math.PI * 2); // Draw the circle
+        ctx.fillStyle = color; // Set the fill color
+        ctx.fill(); // Fill the circle
+        ctx.closePath(); // End the path
+      }
 
-            /*clear any existing intervals*/
-            clearInterval(balloonInterval);
-            clearInterval(timerInterval);
+      /*draw the triangle*/
+      function drawTriangle(
+        move_to_x,
+        move_to_y,
+        x1,
+        y1,
+        x2,
+        y2,
+        x3,
+        y3,
+        color
+      ) {
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.moveTo(move_to_x, move_to_y);
+        ctx.lineTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.fill();
+      }
 
-            /*restart the intervals*/
-            balloonInterval = setInterval(createNewBalloon, new_balloon_interval);
-            timerInterval = setInterval(increaseTimer, 1000);
+      /*stop game function*/
+      function stopGame() {
+        gameRunning = false;
+        clearInterval(balloonInterval);
+        clearInterval(timerInterval);
+      }
 
-            /*restart the game loop*/
-            requestAnimationFrame(gameLoop);
-        }
-        
-        /*draw the instructions, the score, the timer and the eggs*/
-        function draw(){
-            ctx.clearRect(0, 0, canvas_width, canvas_height)
+      /*reset game*/
+      function resetGame() {
+        balloons = [];
+        timer = 0;
+        score = 0;
+        randomNumber = generateRandomNumber();
+        gameRunning = true;
 
-            /*the background image*/
-            ctx.drawImage(backgroundImage, 0, 0, canvas_width, canvas_height);
+        /*clear any existing intervals*/
+        clearInterval(balloonInterval);
+        clearInterval(timerInterval);
 
-            /*the instructions*/
-            drawTextBox(`Find The Number: ${randomNumber}`, canvas_width - 900, 20, 400, 60, 40, 'black', 'white', 2, 'red');
+        /*restart the intervals*/
+        balloonInterval = setInterval(createNewBalloon, new_balloon_interval);
+        timerInterval = setInterval(increaseTimer, 1000);
 
-            /*the score*/
-            drawTextBox(`Score: ${score}`, canvas_width - 200, 20, 170, 60, 30, 'black', 'white', 2, 'red');
+        /*restart the game loop*/
+        requestAnimationFrame(gameLoop);
+      }
 
-            /*the timer*/
-            drawTextBox(`Timer: ${timer}`, 20, 20, 170, 60, 30, 'black', 'white', 2, 'red');
+      /*draw the instructions, the score, the timer and the eggs*/
+      function draw() {
+        ctx.clearRect(0, 0, canvas_width, canvas_height);
 
-            /*the balloons*/
-            balloons.forEach(balloon => balloon.draw());
+        /*the background image*/
+        ctx.drawImage(backgroundImage, 0, 0, canvas_width, canvas_height);
 
-            if (messageTimer > 0){
-                drawTextBox(message, balloon.x, balloon.y, balloon.x_radius, balloon.y_radius, 40, 'white', 'green', 2, 'black');
-                messageTimer --; 
-            }
-        }
+        /*the instructions*/
+        drawTextBox(
+          `Find The Number: ${randomNumber}`,
+          canvas_width - 900,
+          20,
+          400,
+          60,
+          40,
+          "black",
+          "white",
+          2,
+          "red"
+        );
 
-        /*update the screen*/
-        function update(){
-            balloons = balloons.filter(balloon => {
-                balloon.update();
-                return (!balloon.isRemoved);
-            })
-        }
+        /*the score*/
+        drawTextBox(
+          `Score: ${score}`,
+          canvas_width - 200,
+          20,
+          170,
+          60,
+          30,
+          "black",
+          "white",
+          2,
+          "red"
+        );
 
-        /*i dont want the 1st balloon to take 2 seconds to be load so i have to manually create it outside setInterval*/
+        /*the timer*/
+        drawTextBox(
+          `Timer: ${timer}`,
+          20,
+          20,
+          170,
+          60,
+          30,
+          "black",
+          "white",
+          2,
+          "red"
+        );
+
+        /*the balloons*/
+        balloons.forEach((balloon) => balloon.draw());
+      }
+
+      /*update the screen*/
+      function update() {
+        balloons = balloons.filter((balloon) => {
+          balloon.update();
+          return !balloon.isRemoved;
+        });
+      }
+
+      /*i dont want the 1st balloon to take 2 seconds to be load so i have to manually create it outside setInterval*/
+      balloons.push(new Balloon());
+
+      /*create every other balloon */
+      function createNewBalloon() {
         balloons.push(new Balloon());
+      }
 
-        /*create every other balloon */
-        function createNewBalloon(){
-            balloons.push(new Balloon());
+      /*interval for creating every other balloon*/
+      let balloonInterval = setInterval(createNewBalloon, new_balloon_interval);
+
+      /*interval for incrementing timer*/
+      let timerInterval = setInterval(increaseTimer, 1000);
+
+      /*function to check if click is inside play button*/
+      function isInsidePlayButton(mouseX, mouseY) {
+        const dx = mouseX - centerX;
+        const dy = mouseY - centerY;
+        const hypotenuse = Math.sqrt(dx ** 2 + dy ** 2);
+        if (hypotenuse <= playButtonRadius) {
+          return true;
         }
+      }
 
-        /*interval for creating every other balloon*/
-        let balloonInterval = setInterval(createNewBalloon, new_balloon_interval);
+      /*event listener for playbutton cursor to be a pointer*/
+      canvas.addEventListener("mousemove", (event) => {
+        const mouseX = event.offsetX;
+        const mouseY = event.offsetY;
 
-        /*interval for incrementing timer*/
-        let timerInterval = setInterval(increaseTimer, 1000)
-
-        /*function to check if click is inside play button*/
-        function isInsidePlayButton(mouseX, mouseY){
-            const dx = mouseX - centerX;
-            const dy = mouseY - centerY
-            const hypotenuse = Math.sqrt(dx ** 2 + dy ** 2)
-            if (hypotenuse <= playButtonRadius){
-                return true;
-            }
+        if (isInsidePlayButton(mouseX, mouseY)) {
+          canvas.style.cursor = "pointer"; // Change cursor to pointer
+        } else {
+          canvas.style.cursor = "auto"; // Reset cursor to default
         }
+      });
 
-        /*event listener for playbutton cursor to be a pointer*/
-        canvas.addEventListener('mousemove', (event) => {
-            const mouseX = event.offsetX;
-            const mouseY = event.offsetY;
+      /*event listener to start/reset the game when you press the playbutton*/
+      canvas.addEventListener("click", (event) => {
+        const mouseX = event.offsetX;
+        const mouseY = event.offsetY;
 
-            if (isInsidePlayButton(mouseX, mouseY)) {
-                canvas.style.cursor = 'pointer'; // Change cursor to pointer
+        if (isInsidePlayButton(mouseX, mouseY)) {
+          resetGame();
+          backgroundAudio.play();
+          backgroundAudio.volume = 0.1;
+          backgroundAudio.loop = true;
+        }
+      });
+
+      /*create click event handler for balloons*/
+      canvas.addEventListener("click", (event) => {
+        if (!gameRunning) {
+          return;
+        }
+        const mouse_click_x = event.offsetX; //the click's x co-ordinate
+        const mouse_click_y = event.offsetY; //the click's y co-ordinate
+
+        balloons.forEach((balloon) => {
+          /*if the co-ordinates are inside the ballon burst it*/
+          if (balloon.isInside(mouse_click_x, mouse_click_y)) {
+            const balloonBurstAudio = new Audio("balloon-pop.mp3"); //balloon bursting audio
+            balloonBurstAudio.volume = 0.5;
+            balloonBurstAudio.play();
+            balloon.hasBurst = true;
+
+            if (balloon.number === randomNumber) {
+              balloon.isCorrect = true;
+              const correctAnswerAudio = new Audio("correct-answer.mp3"); //the sound when you pop the correct balloon
+              correctAnswerAudio.play();
+              score++;
+              randomNumber = generateRandomNumber();
             } else {
-                canvas.style.cursor = 'auto'; // Reset cursor to default
+              balloon.isCorrect = false;
+              const wrongAnswerAudio = new Audio("wrong-answer.mp3"); // sound when you pop the wrong balloon
+              wrongAnswerAudio.play();
+              const wrongBuzzerAudio = new Audio("wrong-buzzer.mp3"); // sound when you pop the wrong balloon
+              wrongBuzzerAudio.volume = 0.2;
+              wrongBuzzerAudio.play();
             }
+          }
         });
+      });
 
-        /*event listener to reset the game when you press the playbutton*/
-        canvas.addEventListener('click', (event) => {
-            const mouseX = event.offsetX;
-            const mouseY = event.offsetY;
+      /*draw text box that apperars at the beginning of the game*/
+      function drawCanvas() {
+        drawTextBox(
+          "ITS GAME TIME!",
+          canvas_width / 2 - 300,
+          canvas_height / 2 - 110,
+          650,
+          100,
+          70,
+          "white",
+          "orange",
+          5,
+          "black"
+        );
+        drawTextBox(
+          "Time To Have Some Fun",
+          canvas_width / 2 - 220,
+          canvas_height / 2,
+          450,
+          80,
+          40,
+          "white",
+          "orange",
+          2,
+          "black"
+        );
+        drawTextBox(
+          "Press Play",
+          canvas_width / 2 - 170,
+          canvas_height / 2 + 90,
+          350,
+          80,
+          40,
+          "white",
+          "orange",
+          2,
+          "black"
+        );
+        drawPlayButton();
+      }
 
-            if (isInsidePlayButton(mouseX, mouseY)) {
-                resetGame(); 
-            } 
-        });
+      /*run the game loop*/
+      function gameLoop() {
+        if (!gameRunning) {
+          drawCanvas();
+          return;
+        }
+        update();
+        draw();
+        if (timer >= 30) {
+          drawTextBox(
+            "GAME OVER",
+            canvas_width / 2 - 250,
+            canvas_height / 2 - 110,
+            500,
+            100,
+            70,
+            "white",
+            "orange",
+            5,
+            "black"
+          );
+          drawTextBox(
+            `Your score is ${score}`,
+            canvas_width / 2 - 200,
+            canvas_height / 2,
+            400,
+            80,
+            40,
+            "white",
+            "orange",
+            2,
+            "black"
+          );
+          drawTextBox(
+            "Play Again",
+            canvas_width / 2 - 200,
+            canvas_height / 2 + 90,
+            400,
+            80,
+            40,
+            "white",
+            "orange",
+            2,
+            "black"
+          );
+          drawPlayButton();
+          stopGame();
+        } else {
+          requestAnimationFrame(gameLoop); //put the game loop on the canvas
+        }
+      }
 
-        /*create click event handler for balloons*/
-        canvas.addEventListener('click', (event) => {
-            if(!gameRunning){
-                return;
-            }
-            const mouse_click_x = event.offsetX; //the click's x co-ordinate
-            const mouse_click_y = event.offsetY; //the click's y co-ordinate
-
-            balloons.forEach(balloon => {
-                /*if the co-ordinates are inside the ballon burst it*/
-                if(balloon.isInside(mouse_click_x, mouse_click_y)){
-                    const balloonBurstAudio = new Audio('balloon-pop.mp3'); //balloon bursting audio
-                    balloonBurstAudio.volume = 0.5;
-                    balloonBurstAudio.play();
-                    balloon.hasBurst = true; 
-                    
-                    if(balloon.number === randomNumber){
-                        message = 'CORRECT!'
-                        balloon.isCorrect = true;
-                        const correctAnswerAudio = new Audio('correct-answer.mp3') //the sound when you pop the correct balloon
-                        correctAnswerAudio.play()
-                        score++;
-                        randomNumber = generateRandomNumber();
-                        
-                    } else {
-                        message = 'WRONG!'
-                        balloon.isCorrect = false;
-                        const wrongAnswerAudio = new Audio('wrong-answer.mp3'); // sound when you pop the wrong balloon
-                        wrongAnswerAudio.play();
-                        const wrongBuzzerAudio = new Audio('wrong-buzzer.mp3'); // sound when you pop the wrong balloon
-                        wrongBuzzerAudio.volume = 0.5;
-                        wrongBuzzerAudio.play();
-                    }
-
-                    messageTimer = 0;
-            }
-            })
-    
-        });
-        
-        /*run the game loop*/
-        function gameLoop(){
-            if (!gameRunning) {
-                return;
-            }
-            update();
-            draw();
-            if (timer >= 30){
-                drawTextBox('GAME OVER', canvas_width/2 - 250, canvas_height/2 - 110, 500, 100, 70, 'white', 'orange', 5, 'black');
-                drawTextBox(`Your score is ${score}`, canvas_width/2 - 200, canvas_height/2, 400, 80, 40, 'white', 'orange', 2, 'black');
-                drawTextBox('Play Again', canvas_width/2 - 200, canvas_height/2 + 90, 400, 80, 40, 'white', 'orange', 2, 'black');
-                drawPlayButton()
-                stopGame()
-            } else {
-                requestAnimationFrame(gameLoop); //put the game loop on the canvas
-            }
-        };
-
-        gameLoop();
-
+      gameLoop();
     </script>
-</body>
+  </body>
 </html>
